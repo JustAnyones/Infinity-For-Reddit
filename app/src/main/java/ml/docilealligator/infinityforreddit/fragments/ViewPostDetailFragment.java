@@ -61,14 +61,14 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Provider;
 
-import ml.docilealligator.infinityforreddit.DeleteThing;
-import ml.docilealligator.infinityforreddit.Flair;
-import ml.docilealligator.infinityforreddit.FragmentCommunicator;
+import ml.docilealligator.infinityforreddit.thing.DeleteThing;
+import ml.docilealligator.infinityforreddit.subreddit.Flair;
 import ml.docilealligator.infinityforreddit.Infinity;
 import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
-import ml.docilealligator.infinityforreddit.SaveThing;
-import ml.docilealligator.infinityforreddit.SortType;
+import ml.docilealligator.infinityforreddit.thing.SaveThing;
+import ml.docilealligator.infinityforreddit.thing.ReplyNotificationsToggle;
+import ml.docilealligator.infinityforreddit.thing.SortType;
 import ml.docilealligator.infinityforreddit.account.Account;
 import ml.docilealligator.infinityforreddit.activities.CommentActivity;
 import ml.docilealligator.infinityforreddit.activities.EditPostActivity;
@@ -705,18 +705,18 @@ public class ViewPostDetailFragment extends Fragment implements FragmentCommunic
     private void initializeSwipeActionDrawable() {
         if (swipeRightAction == SharedPreferencesUtils.SWIPE_ACITON_DOWNVOTE) {
             backgroundSwipeRight = new ColorDrawable(mCustomThemeWrapper.getDownvoted());
-            drawableSwipeRight = ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_downward_black_24dp, null);
+            drawableSwipeRight = ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_downward_day_night_24dp, null);
         } else {
             backgroundSwipeRight = new ColorDrawable(mCustomThemeWrapper.getUpvoted());
-            drawableSwipeRight = ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_upward_black_24dp, null);
+            drawableSwipeRight = ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_upward_day_night_24dp, null);
         }
 
         if (swipeLeftAction == SharedPreferencesUtils.SWIPE_ACITON_UPVOTE) {
             backgroundSwipeLeft = new ColorDrawable(mCustomThemeWrapper.getUpvoted());
-            drawableSwipeLeft = ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_upward_black_24dp, null);
+            drawableSwipeLeft = ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_upward_day_night_24dp, null);
         } else {
             backgroundSwipeLeft = new ColorDrawable(mCustomThemeWrapper.getDownvoted());
-            drawableSwipeLeft = ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_downward_black_24dp, null);
+            drawableSwipeLeft = ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_downward_day_night_24dp, null);
         }
     }
 
@@ -749,9 +749,15 @@ public class ViewPostDetailFragment extends Fragment implements FragmentCommunic
         EventBus.getDefault().post(new PostUpdateEventToPostList(mPost, postListPosition));
     }
 
-    public void editComment(String commentAuthor, String commentContentMarkdown, int position) {
+    public void editComment(Comment comment, int position) {
         if (mCommentsAdapter != null) {
-            mCommentsAdapter.editComment(commentAuthor,
+            mCommentsAdapter.editComment(comment, position);
+        }
+    }
+
+    public void editComment(String commentContentMarkdown, int position) {
+        if (mCommentsAdapter != null) {
+            mCommentsAdapter.editComment(
                     commentContentMarkdown,
                     position);
         }
@@ -1196,8 +1202,8 @@ public class ViewPostDetailFragment extends Fragment implements FragmentCommunic
 
     @Override
     public void onDestroyView() {
-        super.onDestroyView();
         Bridge.clear(this);
+        super.onDestroyView();
     }
 
     @Override
@@ -1413,7 +1419,9 @@ public class ViewPostDetailFragment extends Fragment implements FragmentCommunic
                     e.printStackTrace();
                 }
             }
-            FetchSubredditData.fetchSubredditData(activity.accountName.equals(Account.ANONYMOUS_ACCOUNT) ? null : mOauthRetrofit, mRetrofit, mPost.getSubredditName(), activity.accessToken,
+            FetchSubredditData.fetchSubredditData(mExecutor, new Handler(),
+                    activity.accountName.equals(Account.ANONYMOUS_ACCOUNT) ? null : mOauthRetrofit,
+                    mRetrofit, mPost.getSubredditName(), activity.accessToken,
                     new FetchSubredditData.FetchSubredditDataListener() {
                         @Override
                         public void onFetchSubredditDataSuccess(SubredditData subredditData, int nCurrentOnlineSubscribers) {
@@ -1803,6 +1811,24 @@ public class ViewPostDetailFragment extends Fragment implements FragmentCommunic
                 }))
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    public void toggleReplyNotifications(Comment comment, int position) {
+        ReplyNotificationsToggle.toggleEnableNotification(new Handler(Looper.getMainLooper()), mOauthRetrofit,
+                activity.accessToken, comment, new ReplyNotificationsToggle.SendNotificationListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(activity,
+                                comment.isSendReplies() ? R.string.reply_notifications_disabled : R.string.reply_notifications_enabled,
+                                Toast.LENGTH_SHORT).show();
+                        mCommentsAdapter.toggleReplyNotifications(comment.getFullName(), position);
+                    }
+
+                    @Override
+                    public void onError() {
+                        Toast.makeText(activity, R.string.toggle_reply_notifications_failed, Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     public void changeToNormalThreadMode() {

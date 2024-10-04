@@ -1,6 +1,8 @@
 package ml.docilealligator.infinityforreddit.fragments;
 
 import android.Manifest;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -11,6 +13,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.PersistableBundle;
 import android.text.TextUtils;
 import android.text.util.Linkify;
 import android.view.LayoutInflater;
@@ -373,13 +376,17 @@ public class ViewRedditGalleryImageOrGifFragment extends Fragment {
     private void download() {
         isDownloading = false;
 
-        Intent intent = new Intent(activity, DownloadMediaService.class);
-        intent.putExtra(DownloadMediaService.EXTRA_URL, media.hasFallback() ? media.fallbackUrl : media.url); // Retrieve original instead of the one additionally compressed by reddit
-        intent.putExtra(DownloadMediaService.EXTRA_MEDIA_TYPE, media.mediaType == Post.Gallery.TYPE_GIF ? DownloadMediaService.EXTRA_MEDIA_TYPE_GIF: DownloadMediaService.EXTRA_MEDIA_TYPE_IMAGE);
-        intent.putExtra(DownloadMediaService.EXTRA_FILE_NAME, media.fileName);
-        intent.putExtra(DownloadMediaService.EXTRA_SUBREDDIT_NAME, subredditName);
-        intent.putExtra(DownloadMediaService.EXTRA_IS_NSFW, isNsfw);
-        ContextCompat.startForegroundService(activity, intent);
+        PersistableBundle extras = new PersistableBundle();
+        extras.putString(DownloadMediaService.EXTRA_URL, media.hasFallback() ? media.fallbackUrl : media.url); // Retrieve original instead of the one additionally compressed by reddit
+        extras.putInt(DownloadMediaService.EXTRA_MEDIA_TYPE, media.mediaType == Post.Gallery.TYPE_GIF ? DownloadMediaService.EXTRA_MEDIA_TYPE_GIF: DownloadMediaService.EXTRA_MEDIA_TYPE_IMAGE);
+        extras.putString(DownloadMediaService.EXTRA_FILE_NAME, media.fileName);
+        extras.putString(DownloadMediaService.EXTRA_SUBREDDIT_NAME, subredditName);
+        extras.putInt(DownloadMediaService.EXTRA_IS_NSFW, isNsfw ? 1 : 0);
+
+        //TODO: contentEstimatedBytes
+        JobInfo jobInfo = DownloadMediaService.constructJobInfo(activity, 5000000, extras);
+        ((JobScheduler) activity.getSystemService(Context.JOB_SCHEDULER_SERVICE)).schedule(jobInfo);
+
         Toast.makeText(activity, R.string.download_started, Toast.LENGTH_SHORT).show();
     }
 
@@ -437,7 +444,7 @@ public class ViewRedditGalleryImageOrGifFragment extends Fragment {
             public boolean onResourceReady(GifDrawable resource, Object model, Target<GifDrawable> target, DataSource dataSource, boolean isFirstResource) {
                 if (activity.getExternalCacheDir() != null) {
                     SaveGIFToFile.saveGifToFile(mExecutor, new Handler(), resource, activity.getExternalCacheDir().getPath(), media.fileName,
-                            new SaveGIFToFile.SaveGIFToFileAsyncTaskListener() {
+                            new SaveGIFToFile.SaveGIFToFileListener() {
                                 @Override
                                 public void saveSuccess(File imageFile) {
                                     Uri uri = FileProvider.getUriForFile(activity,
