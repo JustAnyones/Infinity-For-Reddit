@@ -1,15 +1,21 @@
 package ml.docilealligator.infinityforreddit.activities;
 
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.graphics.Insets;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.snackbar.Snackbar;
+
+import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -20,6 +26,7 @@ import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.databinding.ActivitySendPrivateMessageBinding;
 import ml.docilealligator.infinityforreddit.message.ComposeMessage;
 import ml.docilealligator.infinityforreddit.utils.SharedPreferencesUtils;
+import ml.docilealligator.infinityforreddit.utils.Utils;
 import retrofit2.Retrofit;
 
 public class SendPrivateMessageActivity extends BaseActivity {
@@ -36,6 +43,8 @@ public class SendPrivateMessageActivity extends BaseActivity {
     SharedPreferences mCurrentAccountSharedPreferences;
     @Inject
     CustomThemeWrapper mCustomThemeWrapper;
+    @Inject
+    Executor mExecutor;
     private String mAccessToken;
     private boolean isSubmitting = false;
     private ActivitySendPrivateMessageBinding binding;
@@ -44,7 +53,7 @@ public class SendPrivateMessageActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         ((Infinity) getApplication()).getAppComponent().inject(this);
 
-        setImmersiveModeNotApplicable();
+        setImmersiveModeNotApplicableBelowAndroid16();
         
         super.onCreate(savedInstanceState);
 
@@ -53,8 +62,32 @@ public class SendPrivateMessageActivity extends BaseActivity {
 
         applyCustomTheme();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && isChangeStatusBarIconColor()) {
-            addOnOffsetChangedListener(binding.appbarLayoutSendPrivateMessageActivity);
+        if (isImmersiveInterface()) {
+            if (isChangeStatusBarIconColor()) {
+                addOnOffsetChangedListener(binding.appbarLayoutSendPrivateMessageActivity);
+            }
+
+            ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), new OnApplyWindowInsetsListener() {
+                @NonNull
+                @Override
+                public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
+                    Insets allInsets = Utils.getInsets(insets, true);
+
+                    setMargins(binding.toolbarSendPrivateMessageActivity,
+                            allInsets.left,
+                            allInsets.top,
+                            allInsets.right,
+                            BaseActivity.IGNORE_MARGIN);
+
+                    binding.nestedScrollViewSendPrivateMesassgeActivity.setPadding(
+                            allInsets.left,
+                            0,
+                            allInsets.right,
+                            allInsets.bottom);
+
+                    return WindowInsetsCompat.CONSUMED;
+                }
+            });
         }
 
         mAccessToken = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCESS_TOKEN, null);
@@ -105,7 +138,7 @@ public class SendPrivateMessageActivity extends BaseActivity {
                 Snackbar sendingSnackbar = Snackbar.make(binding.getRoot(), R.string.sending_message, Snackbar.LENGTH_INDEFINITE);
                 sendingSnackbar.show();
 
-                ComposeMessage.composeMessage(mOauthRetrofit, mAccessToken, getResources().getConfiguration().locale,
+                ComposeMessage.composeMessage(mExecutor, mHandler, mOauthRetrofit, mAccessToken, getResources().getConfiguration().locale,
                         binding.usernameEditTextSendPrivateMessageActivity.getText().toString(), binding.subjetEditTextSendPrivateMessageActivity.getText().toString(),
                         binding.contentEditTextSendPrivateMessageActivity.getText().toString(), new ComposeMessage.ComposeMessageListener() {
                             @Override

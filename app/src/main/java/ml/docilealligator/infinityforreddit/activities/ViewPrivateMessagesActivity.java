@@ -2,12 +2,16 @@ package ml.docilealligator.infinityforreddit.activities;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.MenuItem;
+import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.core.graphics.Insets;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.transition.AutoTransition;
 import androidx.transition.TransitionManager;
 
@@ -38,6 +42,7 @@ import ml.docilealligator.infinityforreddit.events.RepliedToPrivateMessageEvent;
 import ml.docilealligator.infinityforreddit.message.Message;
 import ml.docilealligator.infinityforreddit.message.ReadMessage;
 import ml.docilealligator.infinityforreddit.message.ReplyMessage;
+import ml.docilealligator.infinityforreddit.utils.Utils;
 import retrofit2.Retrofit;
 
 public class ViewPrivateMessagesActivity extends BaseActivity implements ActivityToolbarInterface {
@@ -82,7 +87,7 @@ public class ViewPrivateMessagesActivity extends BaseActivity implements Activit
     protected void onCreate(Bundle savedInstanceState) {
         ((Infinity) getApplication()).getAppComponent().inject(this);
 
-        setImmersiveModeNotApplicable();
+        setImmersiveModeNotApplicableBelowAndroid16();
 
         super.onCreate(savedInstanceState);
 
@@ -95,8 +100,32 @@ public class ViewPrivateMessagesActivity extends BaseActivity implements Activit
 
         applyCustomTheme();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && isChangeStatusBarIconColor()) {
-            addOnOffsetChangedListener(binding.appbarLayoutViewPrivateMessagesActivity);
+        if (isImmersiveInterface()) {
+            if (isChangeStatusBarIconColor()) {
+                addOnOffsetChangedListener(binding.appbarLayoutViewPrivateMessagesActivity);
+            }
+
+            ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), new OnApplyWindowInsetsListener() {
+                @NonNull
+                @Override
+                public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
+                    Insets allInsets = Utils.getInsets(insets, true);
+
+                    setMargins(binding.toolbarViewPrivateMessagesActivity,
+                            allInsets.left,
+                            allInsets.top,
+                            allInsets.right,
+                            BaseActivity.IGNORE_MARGIN);
+
+                    binding.linearLayoutViewPrivateMessagesActivity.setPadding(
+                            allInsets.left,
+                            0,
+                            allInsets.right,
+                            allInsets.bottom);
+
+                    return insets;
+                }
+            });
         }
 
         setSupportActionBar(binding.toolbarViewPrivateMessagesActivity);
@@ -158,9 +187,9 @@ public class ViewPrivateMessagesActivity extends BaseActivity implements Activit
                         }
                         isSendingMessage = true;
                         binding.sendImageViewViewPrivateMessagesActivity.setColorFilter(mSecondaryTextColor, android.graphics.PorterDuff.Mode.SRC_IN);
-                        ReplyMessage.replyMessage(binding.editTextViewPrivateMessagesActivity.getText().toString(), replyTo.getFullname(),
-                                getResources().getConfiguration().locale, mOauthRetrofit, accessToken,
-                                new ReplyMessage.ReplyMessageListener() {
+                        ReplyMessage.replyMessage(mExecutor, mHandler, binding.editTextViewPrivateMessagesActivity.getText().toString(),
+                                replyTo.getFullname(), getResources().getConfiguration().locale,
+                                mOauthRetrofit, accessToken, new ReplyMessage.ReplyMessageListener() {
                                     @Override
                                     public void replyMessageSuccess(Message message) {
                                         if (mAdapter != null) {
@@ -217,14 +246,14 @@ public class ViewPrivateMessagesActivity extends BaseActivity implements Activit
             mProvideUserAvatarCallbacks.add(provideUserAvatarCallback);
             if (!isLoadingUserAvatar) {
                 LoadUserData.loadUserData(mExecutor, new Handler(), mRedditDataRoomDatabase,
-                        username, mRetrofit, iconImageUrl -> {
-                    isLoadingUserAvatar = false;
-                    mUserAvatar = iconImageUrl == null ? "" : iconImageUrl;
-                    for (ProvideUserAvatarCallback provideUserAvatarCallbackInArrayList : mProvideUserAvatarCallbacks) {
-                        provideUserAvatarCallbackInArrayList.fetchAvatarSuccess(iconImageUrl);
-                    }
-                    mProvideUserAvatarCallbacks.clear();
-                });
+                        accessToken, username, mOauthRetrofit, mRetrofit, iconImageUrl -> {
+                            isLoadingUserAvatar = false;
+                            mUserAvatar = iconImageUrl == null ? "" : iconImageUrl;
+                            for (ProvideUserAvatarCallback provideUserAvatarCallbackInArrayList : mProvideUserAvatarCallbacks) {
+                                provideUserAvatarCallbackInArrayList.fetchAvatarSuccess(iconImageUrl);
+                            }
+                            mProvideUserAvatarCallbacks.clear();
+                        });
             }
         } else {
             provideUserAvatarCallback.fetchAvatarSuccess(mUserAvatar);

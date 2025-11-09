@@ -30,9 +30,10 @@ public class AccessTokenAuthenticator implements Authenticator {
     private final RedditDataRoomDatabase mRedditDataRoomDatabase;
     private final SharedPreferences mCurrentAccountSharedPreferences;
 
-    public AccessTokenAuthenticator(Retrofit retrofit, RedditDataRoomDatabase accountRoomDatabase, SharedPreferences currentAccountSharedPreferences) {
+    public AccessTokenAuthenticator(Retrofit retrofit, RedditDataRoomDatabase redditDataRoomDatabase,
+                                    SharedPreferences currentAccountSharedPreferences) {
         mRetrofit = retrofit;
-        mRedditDataRoomDatabase = accountRoomDatabase;
+        mRedditDataRoomDatabase = redditDataRoomDatabase;
         mCurrentAccountSharedPreferences = currentAccountSharedPreferences;
     }
 
@@ -54,7 +55,7 @@ public class AccessTokenAuthenticator implements Authenticator {
                 String accessTokenFromDatabase = account.getAccessToken();
                 if (accessToken.equals(accessTokenFromDatabase)) {
                     String newAccessToken = refreshAccessToken(account);
-                    if (!newAccessToken.equals("")) {
+                    if (!newAccessToken.isEmpty()) {
                         return response.request().newBuilder().headers(Headers.of(APIUtils.getOAuthHeader(newAccessToken))).build();
                     } else {
                         return null;

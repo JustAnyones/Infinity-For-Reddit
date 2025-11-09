@@ -5,11 +5,17 @@ import static androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTI
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.View;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import java.util.concurrent.Executor;
 
@@ -20,6 +26,7 @@ import ml.docilealligator.infinityforreddit.Infinity;
 import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.databinding.ActivityLockScreenBinding;
+import ml.docilealligator.infinityforreddit.utils.Utils;
 
 public class LockScreenActivity extends BaseActivity {
 
@@ -37,7 +44,7 @@ public class LockScreenActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         ((Infinity) getApplication()).getAppComponent().inject(this);
 
-        setImmersiveModeNotApplicable();
+        setImmersiveModeNotApplicableBelowAndroid16();
 
         super.onCreate(savedInstanceState);
 
@@ -46,11 +53,37 @@ public class LockScreenActivity extends BaseActivity {
 
         applyCustomTheme();
 
+        if (isImmersiveInterface()) {
+            ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), new OnApplyWindowInsetsListener() {
+                @NonNull
+                @Override
+                public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
+                    Insets allInsets = Utils.getInsets(insets, false);
+
+                    binding.getRoot().setPadding(
+                            allInsets.left,
+                            allInsets.top,
+                            allInsets.right,
+                            allInsets.bottom
+                    );
+
+                    return WindowInsetsCompat.CONSUMED;
+                }
+            });
+        }
+
         binding.unlockButtonLockScreenActivity.setOnClickListener(view -> {
             authenticate();
         });
 
         authenticate();
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+
+            }
+        });
     }
 
     private void authenticate() {
@@ -104,7 +137,4 @@ public class LockScreenActivity extends BaseActivity {
             binding.unlockButtonLockScreenActivity.setTypeface(typeface);
         }
     }
-
-    @Override
-    public void onBackPressed() { }
 }

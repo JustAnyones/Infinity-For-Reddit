@@ -31,6 +31,7 @@ public class Comment implements Parcelable {
     private String id;
     private String fullName;
     private String author;
+    private String authorFullName;
     private String authorFlair;
     private String authorFlairHTML;
     private String authorIconUrl;
@@ -53,6 +54,13 @@ public class Comment implements Parcelable {
     private boolean scoreHidden;
     private boolean saved;
     private boolean sendReplies;
+    private boolean locked;
+    private boolean canModComment;
+    private boolean approved;
+    private long approvedAtUTC;
+    private String approvedBy;
+    private boolean removed;
+    private boolean spam;
     private boolean isExpanded;
     private boolean hasExpandedBefore;
     private boolean isFilteredOut;
@@ -64,16 +72,19 @@ public class Comment implements Parcelable {
     private long editedTimeMillis;
     private Map<String, MediaMetadata> mediaMetadataMap;
 
-    public Comment(String id, String fullName, String author, String authorFlair,
+    public Comment(String id, String fullName, String author, String authorFullName, String authorFlair,
                    String authorFlairHTML, String linkAuthor,
                    long commentTimeMillis, String commentMarkdown, String commentRawText,
                    String linkId, String subredditName, String parentId, int score,
                    int voteType, boolean isSubmitter, String distinguished, String permalink,
                    int depth, boolean collapsed, boolean hasReply,
-                   boolean scoreHidden, boolean saved, boolean sendReplies, long edited, Map<String, MediaMetadata> mediaMetadataMap) {
+                   boolean scoreHidden, boolean saved, boolean sendReplies, boolean locked, boolean canModComment,
+                   boolean approved, long approvedAtUTC, String approvedBy, boolean removed, boolean spam,
+                   long edited, Map<String, MediaMetadata> mediaMetadataMap) {
         this.id = id;
         this.fullName = fullName;
         this.author = author;
+        this.authorFullName = authorFullName;
         this.authorFlair = authorFlair;
         this.authorFlairHTML = authorFlairHTML;
         this.linkAuthor = linkAuthor;
@@ -94,6 +105,13 @@ public class Comment implements Parcelable {
         this.scoreHidden = scoreHidden;
         this.saved = saved;
         this.sendReplies = sendReplies;
+        this.locked = locked;
+        this.canModComment = canModComment;
+        this.approved = approved;
+        this.approvedAtUTC = approvedAtUTC;
+        this.approvedBy = approvedBy;
+        this.removed = removed;
+        this.spam = spam;
         this.isExpanded = false;
         this.hasExpandedBefore = false;
         this.editedTimeMillis = edited;
@@ -122,6 +140,7 @@ public class Comment implements Parcelable {
         id = in.readString();
         fullName = in.readString();
         author = in.readString();
+        authorFullName = in.readString();
         authorFlair = in.readString();
         authorFlairHTML = in.readString();
         authorIconUrl = in.readString();
@@ -144,8 +163,16 @@ public class Comment implements Parcelable {
         scoreHidden = in.readByte() != 0;
         saved = in.readByte() != 0;
         sendReplies = in.readByte() != 0;
+        locked = in.readByte() != 0;
+        canModComment = in.readByte() != 0;
+        approved = in.readByte() != 0;
+        approvedAtUTC = in.readLong();
+        approvedBy = in.readString();
+        removed = in.readByte() != 0;
+        spam = in.readByte() != 0;
         isExpanded = in.readByte() != 0;
         hasExpandedBefore = in.readByte() != 0;
+        editedTimeMillis = in.readLong();
         isFilteredOut = in.readByte() != 0;
         children = new ArrayList<>();
         in.readTypedList(children, Comment.CREATOR);
@@ -175,6 +202,10 @@ public class Comment implements Parcelable {
 
     public void setAuthor(String author) {
         this.author = author;
+    }
+
+    public String getAuthorFullName() {
+        return authorFullName;
     }
 
     public String getAuthorFlair() {
@@ -303,6 +334,55 @@ public class Comment implements Parcelable {
 
     public void toggleSendReplies() {
         sendReplies = !sendReplies;
+    }
+
+    public boolean isLocked() {
+        return locked;
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+    }
+
+    public boolean isCanModComment() {
+        return canModComment;
+    }
+
+    public boolean isApproved() {
+        return approved;
+    }
+
+    public void setApproved(boolean approved) {
+        this.approved = approved;
+    }
+
+    public long getApprovedAtUTC() {
+        return approvedAtUTC;
+    }
+
+    public void setApprovedAtUTC(long approvedAtUTC) {
+        this.approvedAtUTC = approvedAtUTC;
+    }
+
+    public String getApprovedBy() {
+        return approvedBy;
+    }
+
+    public void setApprovedBy(String approvedBy) {
+        this.approvedBy = approvedBy;
+    }
+
+    public boolean isRemoved() {
+        return removed;
+    }
+
+    public void setRemoved(boolean removed, boolean spam) {
+        this.removed = removed;
+        this.spam = spam;
+    }
+
+    public boolean isSpam() {
+        return spam;
     }
 
     public boolean isExpanded() {
@@ -440,6 +520,7 @@ public class Comment implements Parcelable {
         parcel.writeString(id);
         parcel.writeString(fullName);
         parcel.writeString(author);
+        parcel.writeString(authorFullName);
         parcel.writeString(authorFlair);
         parcel.writeString(authorFlairHTML);
         parcel.writeString(authorIconUrl);
@@ -462,8 +543,16 @@ public class Comment implements Parcelable {
         parcel.writeByte((byte) (scoreHidden ? 1 : 0));
         parcel.writeByte((byte) (saved ? 1 : 0));
         parcel.writeByte((byte) (sendReplies ? 1 : 0));
+        parcel.writeByte((byte) (locked ? 1 : 0));
+        parcel.writeByte((byte) (canModComment ? 1 : 0));
+        parcel.writeByte((byte) (approved ? 1 : 0));
+        parcel.writeLong(approvedAtUTC);
+        parcel.writeString(approvedBy);
+        parcel.writeByte((byte) (removed ? 1 : 0));
+        parcel.writeByte((byte) (spam ? 1 : 0));
         parcel.writeByte((byte) (isExpanded ? 1 : 0));
         parcel.writeByte((byte) (hasExpandedBefore ? 1 : 0));
+        parcel.writeLong(editedTimeMillis);
         parcel.writeByte((byte) (isFilteredOut ? 1 : 0));
         parcel.writeTypedList(children);
         parcel.writeStringList(moreChildrenIds);

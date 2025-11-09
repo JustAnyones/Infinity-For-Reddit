@@ -12,11 +12,15 @@ import android.widget.LinearLayout;
 import androidx.appcompat.view.menu.MenuItemImpl;
 import androidx.core.view.MenuItemCompat;
 
+import com.google.android.material.badge.BadgeDrawable;
+import com.google.android.material.badge.BadgeUtils;
+import com.google.android.material.badge.ExperimentalBadgeUtils;
 import com.google.android.material.bottomappbar.BottomAppBar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigationrail.NavigationRailView;
 
 import ml.docilealligator.infinityforreddit.R;
+import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.utils.SharedPreferencesUtils;
 
 public class NavigationWrapper {
@@ -30,10 +34,20 @@ public class NavigationWrapper {
     public NavigationRailView navigationRailView;
     public FloatingActionButton floatingActionButton;
 
+    private CustomThemeWrapper customThemeWrapper;
+    private int option1 = -1;
+    private int option2 = -1;
+    private int option3 = -1;
+    private int option4 = -1;
+
+    private int inboxCount;
+    private BadgeDrawable badgeDrawable;
+
     public NavigationWrapper(BottomAppBar bottomAppBar, LinearLayout linearLayoutBottomAppBar,
                              ImageView option1BottomAppBar, ImageView option2BottomAppBar,
                              ImageView option3BottomAppBar, ImageView option4BottomAppBar,
                              FloatingActionButton floatingActionButton, NavigationRailView navigationRailView,
+                             CustomThemeWrapper customThemeWrapper,
                              boolean showBottomAppBar) {
         this.bottomAppBar = bottomAppBar;
         this.linearLayoutBottomAppBar = linearLayoutBottomAppBar;
@@ -42,6 +56,7 @@ public class NavigationWrapper {
         this.option3BottomAppBar = option3BottomAppBar;
         this.option4BottomAppBar = option4BottomAppBar;
         this.navigationRailView = navigationRailView;
+        this.customThemeWrapper = customThemeWrapper;
         if (navigationRailView != null) {
             if (showBottomAppBar) {
                 this.floatingActionButton = (FloatingActionButton) navigationRailView.getHeaderView();
@@ -115,6 +130,23 @@ public class NavigationWrapper {
         }
     }
 
+    public void bindOptions(int... options) {
+        if (options.length == 2) {
+            if (navigationRailView == null) {
+                option2 = options[0];
+                option4 = options[1];
+            } else {
+                option1 = options[0];
+                option2 = options[1];
+            }
+        } else {
+            option1 = options[0];
+            option2 = options[1];
+            option3 = options[2];
+            option4 = options[3];
+        }
+    }
+
     public void setOtherActivitiesContentDescription(Context context, View view, int option) {
         switch (option) {
             case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_HOME:
@@ -147,34 +179,35 @@ public class NavigationWrapper {
             case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_SEARCH:
                 view.setContentDescription(context.getString(R.string.content_description_search));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GO_TO_SUBREDDIT :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GO_TO_SUBREDDIT:
                 view.setContentDescription(context.getString(R.string.content_description_go_to_subreddit));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GO_TO_USER :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GO_TO_USER:
                 view.setContentDescription(context.getString(R.string.content_description_go_to_user));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_RANDOM :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_RANDOM:
                 view.setContentDescription(context.getString(R.string.content_description_random));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_HIDE_READ_POSTS :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_HIDE_READ_POSTS:
                 view.setContentDescription(context.getString(R.string.content_description_hide_read_posts));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_FILTER_POSTS :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_FILTER_POSTS:
                 view.setContentDescription(context.getString(R.string.content_description_filter_posts));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_UPVOTED :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_UPVOTED:
                 view.setContentDescription(context.getString(R.string.content_description_upvoted));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_DOWNVOTED :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_DOWNVOTED:
                 view.setContentDescription(context.getString(R.string.content_description_downvoted));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_HIDDEN :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_HIDDEN:
                 view.setContentDescription(context.getString(R.string.content_description_hidden));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_SAVED :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_SAVED:
                 view.setContentDescription(context.getString(R.string.content_description_saved));
                 break;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GO_TO_TOP :
+            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GO_TO_TOP:
+            default:
                 view.setContentDescription(context.getString(R.string.content_description_go_to_top));
                 break;
         }
@@ -202,5 +235,64 @@ public class NavigationWrapper {
         if (navigationRailView == null) {
             floatingActionButton.hide();
         }
+    }
+
+    @ExperimentalBadgeUtils
+    public void setInboxCount(Context context, int inboxCount) {
+        if (inboxCount < 0) {
+            this.inboxCount = Math.max(0, this.inboxCount + inboxCount);
+        } else {
+            this.inboxCount = inboxCount;
+        }
+
+        if (option1 == SharedPreferencesUtils.MAIN_ACTIVITY_BOTTOM_APP_BAR_OPTION_INBOX || option1 == SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_INBOX) {
+            if (navigationRailView == null) {
+                if (this.inboxCount == 0) {
+                    BadgeUtils.detachBadgeDrawable(badgeDrawable, option1BottomAppBar);
+                    badgeDrawable = null;
+                } else {
+                    BadgeUtils.attachBadgeDrawable(getBadgeDrawable(context, inboxCount, option1BottomAppBar), option1BottomAppBar);
+                }
+            }
+        } else if (option2 == SharedPreferencesUtils.MAIN_ACTIVITY_BOTTOM_APP_BAR_OPTION_INBOX || option2 == SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_INBOX) {
+            if (navigationRailView == null) {
+                if (this.inboxCount == 0) {
+                    BadgeUtils.detachBadgeDrawable(badgeDrawable, option2BottomAppBar);
+                    badgeDrawable = null;
+                } else {
+                    BadgeUtils.attachBadgeDrawable(getBadgeDrawable(context, inboxCount, option2BottomAppBar), option2BottomAppBar);
+                }
+            }
+        } else if (option3 == SharedPreferencesUtils.MAIN_ACTIVITY_BOTTOM_APP_BAR_OPTION_INBOX || option3 == SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_INBOX) {
+            if (navigationRailView == null) {
+                if (this.inboxCount == 0) {
+                    BadgeUtils.detachBadgeDrawable(badgeDrawable, option3BottomAppBar);
+                    badgeDrawable = null;
+                } else {
+                    BadgeUtils.attachBadgeDrawable(getBadgeDrawable(context, inboxCount, option3BottomAppBar), option3BottomAppBar);
+                }
+            }
+        } else if (option4 == SharedPreferencesUtils.MAIN_ACTIVITY_BOTTOM_APP_BAR_OPTION_INBOX || option4 == SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_INBOX) {
+            if (navigationRailView == null) {
+                if (this.inboxCount == 0) {
+                    BadgeUtils.detachBadgeDrawable(badgeDrawable, option4BottomAppBar);
+                    badgeDrawable = null;
+                } else {
+                    BadgeUtils.attachBadgeDrawable(getBadgeDrawable(context, inboxCount, option4BottomAppBar), option4BottomAppBar);
+                }
+            }
+        }
+    }
+
+    private BadgeDrawable getBadgeDrawable(Context context, int inboxCount, View anchorView) {
+        BadgeDrawable badgeDrawable = BadgeDrawable.create(context);
+        badgeDrawable.setNumber(inboxCount);
+        badgeDrawable.setBackgroundColor(customThemeWrapper.getColorAccent());
+        badgeDrawable.setBadgeTextColor(customThemeWrapper.getButtonTextColor());
+        badgeDrawable.setHorizontalOffset(anchorView.getWidth() / 2);
+
+        this.badgeDrawable = badgeDrawable;
+
+        return badgeDrawable;
     }
 }

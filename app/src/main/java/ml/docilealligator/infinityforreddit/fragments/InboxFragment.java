@@ -8,6 +8,10 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.core.graphics.Insets;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.paging.PagedList;
@@ -19,6 +23,8 @@ import com.bumptech.glide.RequestManager;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
+
+import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -37,6 +43,7 @@ import ml.docilealligator.infinityforreddit.events.RepliedToPrivateMessageEvent;
 import ml.docilealligator.infinityforreddit.message.FetchMessage;
 import ml.docilealligator.infinityforreddit.message.Message;
 import ml.docilealligator.infinityforreddit.message.MessageViewModel;
+import ml.docilealligator.infinityforreddit.utils.Utils;
 import retrofit2.Retrofit;
 
 public class InboxFragment extends Fragment implements FragmentCommunicator {
@@ -54,6 +61,8 @@ public class InboxFragment extends Fragment implements FragmentCommunicator {
     SharedPreferences mSharedPreferences;
     @Inject
     CustomThemeWrapper mCustomThemeWrapper;
+    @Inject
+    Executor mExecutor;
     private String mWhere;
     private MessageRecyclerViewAdapter mAdapter;
     private RequestManager mGlide;
@@ -83,7 +92,18 @@ public class InboxFragment extends Fragment implements FragmentCommunicator {
         mGlide = Glide.with(this);
 
         if (mActivity.isImmersiveInterface()) {
-            binding.recyclerViewInboxFragment.setPadding(0, 0, 0, mActivity.getNavBarHeight());
+            ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), new OnApplyWindowInsetsListener() {
+                @NonNull
+                @Override
+                public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
+                    Insets allInsets = Utils.getInsets(insets, false);
+
+                    binding.recyclerViewInboxFragment.setPadding(0, 0, 0, allInsets.bottom);
+
+                    return WindowInsetsCompat.CONSUMED;
+                }
+            });
+            //binding.recyclerViewInboxFragment.setPadding(0, 0, 0, mActivity.getNavBarHeight());
         }
 
         mWhere = arguments.getString(EXTRA_MESSAGE_WHERE, FetchMessage.WHERE_INBOX);
@@ -108,8 +128,8 @@ public class InboxFragment extends Fragment implements FragmentCommunicator {
             });
         }
 
-        MessageViewModel.Factory factory = new MessageViewModel.Factory(mOauthRetrofit,
-                getResources().getConfiguration().locale, mActivity.accessToken, mWhere);
+        MessageViewModel.Factory factory = new MessageViewModel.Factory(mExecutor, mActivity.mHandler,
+                mOauthRetrofit, getResources().getConfiguration().locale, mActivity.accessToken, mWhere);
         mMessageViewModel = new ViewModelProvider(this, factory).get(MessageViewModel.class);
         mMessageViewModel.getMessages().observe(getViewLifecycleOwner(), messages -> mAdapter.submitList(messages));
 
